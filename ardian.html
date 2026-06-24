@@ -1,0 +1,1187 @@
+:Portal Presensi & Pengaduan Terhubung:index.html
+<!-- Web Presensi & Pengaduan PresentQu - Sistem Terintegrasi Multi-User Real-Time -->
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-stone-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PresentQu - Portal Presensi & Layanan Pengaduan Akademik</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- STREAMING_CHUNK:Configuring system branding and colors... -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        eduPrimary: {
+                            50: '#fbf9f4',
+                            100: '#f3ece0',
+                            600: '#8c6239', /* Premium Earth Brown */
+                            700: '#6f4e2f',
+                            800: '#533a22',
+                        },
+                        eduAcademic: {
+                            50: '#f0f4f8',
+                            100: '#dbe3f0',
+                            600: '#2b4c7e', /* Academic Navy Blue */
+                            700: '#1a3052',
+                            800: '#101e33',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;500;600;700&family=Playfair+Display:ital,wght=0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .serif-title { font-family: 'Playfair Display', serif; }
+    </style>
+</head>
+<body class="h-full text-stone-800 antialiased flex flex-col justify-between relative">
+
+    <!-- NOTIFIKASI TOAST -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- TOMBOL PENGATURAN DATABASE (Discreet Top Right) -->
+    <button onclick="toggleConfigModal()" class="absolute top-4 right-4 text-xs font-semibold text-stone-500 hover:text-stone-800 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-200/80 rounded-xl shadow-sm z-40 transition">
+        <span>⚙️ Konfigurasi</span>
+    </button>
+
+    <!-- MAIN WRAPPER -->
+    <main id="app" class="flex-grow flex items-center justify-center w-full p-4 md:p-8">
+        <!-- Spinner Loading Awal -->
+        <div class="text-center space-y-3">
+            <div class="w-12 h-12 border-4 border-eduPrimary-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p class="text-xs text-stone-500 font-medium">Menghubungkan ke Cloud Database...</p>
+        </div>
+    </main>
+
+    <!-- MODAL CONFIG FIREBASE -->
+    <div id="configModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 border border-stone-200 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-stone-800 text-base flex items-center gap-2">
+                    <span>⚙️ Konfigurasi Database</span>
+                </h3>
+                <button onclick="toggleConfigModal()" class="text-stone-400 hover:text-stone-600 text-xl font-bold">&times;</button>
+            </div>
+            <p class="text-xs text-stone-500 leading-relaxed">
+                Aplikasi ini dirancang untuk produksi multi-pengguna. Anda dapat menempelkan konfigurasi Firebase SDK (Firestore & Auth) milik Anda di bawah ini agar data tersinkronisasi di server cloud Anda sendiri secara real-time.
+            </p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Firebase Config JSON</label>
+                    <textarea id="firebaseConfigInput" rows="5" class="w-full text-xs font-mono p-3 bg-stone-50 border rounded-xl outline-none focus:ring-2 focus:ring-eduPrimary-600" placeholder='{"apiKey": "AIza...", "authDomain": "...", "projectId": "..."}'></textarea>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="saveCustomConfig()" class="w-full bg-eduPrimary-600 hover:bg-eduPrimary-700 text-white text-xs font-bold py-2.5 rounded-xl transition">Simpan & Muat Ulang</button>
+                <button onclick="toggleConfigModal()" class="w-1/2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold py-2.5 rounded-xl transition">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT PROFIL MAHASISWA -->
+    <div id="profileModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 border border-stone-200 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-stone-800 text-base flex items-center gap-2">
+                    <span>📝 Edit Profil Taruna</span>
+                </h3>
+                <button onclick="toggleProfileModal()" class="text-stone-400 hover:text-stone-600 text-xl font-bold">&times;</button>
+            </div>
+            <form id="profileEditForm" onsubmit="saveStudentProfile(event)" class="space-y-4">
+                <div class="flex flex-col items-center gap-3">
+                    <div class="relative w-24 h-24 rounded-2xl bg-stone-100 border overflow-hidden flex items-center justify-center shadow-inner">
+                        <img id="profilePreview" src="" class="w-full h-full object-cover hidden">
+                        <span id="profilePlaceholderText" class="text-2xl font-bold text-stone-400">?</span>
+                    </div>
+                    <label class="cursor-pointer bg-stone-100 hover:bg-stone-200 border text-[11px] font-bold px-3 py-1.5 rounded-xl transition">
+                        <span>Pilih Foto Profil</span>
+                        <input type="file" id="profileFileInput" accept="image/*" onchange="handleAvatarUpload(event)" class="hidden">
+                    </label>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Nama Lengkap</label>
+                        <input type="text" id="editProfileName" required class="w-full px-4 py-2 text-sm border rounded-xl outline-none focus:ring-2 focus:ring-eduPrimary-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">NIT</label>
+                        <input type="text" id="editProfileNim" required class="w-full px-4 py-2 text-sm border rounded-xl outline-none focus:ring-2 focus:ring-eduPrimary-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Program Studi</label>
+                        <input type="text" id="editProfileProdi" required class="w-full px-4 py-2 text-sm border rounded-xl outline-none focus:ring-2 focus:ring-eduPrimary-600">
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button type="submit" class="w-full bg-eduPrimary-600 hover:bg-eduPrimary-700 text-white text-xs font-bold py-2.5 rounded-xl transition">Simpan Perubahan</button>
+                    <button type="button" onclick="toggleProfileModal()" class="w-1/2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold py-2.5 rounded-xl transition">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-stone-200/60 py-4 text-center text-xs text-stone-400">
+        <p>&copy; 2026 <span class="font-bold text-eduPrimary-700">PresentQu</span>. Menjaga Komitmen Membaca & Mengajar.</p>
+    </footer>
+
+    <!-- STREAMING_CHUNK:Importing Firebase Web SDK modules... -->
+    <!-- SDK Firebase dari CDN ESM Resmi -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- SISTEM DETEKSI CONFIG / FALLBACK LOCAL STORAGE ---
+        const DEFAULT_APP_ID = 'presentqu-v2';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : DEFAULT_APP_ID;
+        
+        let firebaseConfig = null;
+        const localConfigStr = localStorage.getItem('custom_firebase_config');
+
+        if (localConfigStr) {
+            try {
+                firebaseConfig = JSON.parse(localConfigStr);
+            } catch (e) {
+                console.error("Gagal membaca konfigurasi Firebase lokal.");
+            }
+        }
+
+        if (!firebaseConfig && typeof __firebase_config !== 'undefined') {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } catch (e) {
+                console.error("Gagal mengurai konfigurasi default.");
+            }
+        }
+
+        const isUsingFirebase = !!(firebaseConfig && firebaseConfig.projectId);
+
+        // --- STATE MANAJEMEN ---
+        const state = {
+            isLoggedIn: false,
+            role: 'mahasiswa', 
+            activeLoginTab: 'taruna', 
+            user: { 
+                username: '', 
+                nim: '', 
+                prodi: 'Manajemen Transportasi Udara',
+                avatarUrl: '' 
+            },
+            dosenUser: {
+                nama: '',
+                nip: '',
+                spesialisasi: 'Manajemen Kedirgantaraan & Logistik'
+            },
+            prodiUser: {
+                username: '',
+                kode: '',
+                fakultas: 'Teknologi & Manajemen Kedirgantaraan'
+            },
+            selectedMk: 'MK01', 
+            reportedDosen: {}, 
+            complaints: [], // Wadah Laporan Kustom Mahasiswa -> Prodi -> Dosen
+            mataKuliahList: [] 
+        };
+
+        // Data Default yang Benar-Benar Bersih (Pertemuan Awal Tanpa Sesi Absen Lama)
+        const defaultMataKuliahList = [
+            { 
+                id: 'MK01', 
+                nama: 'Manajemen Operasi Bandar Udara', 
+                dosen: 'Kapten Hermawan, S.S.T., M.M.', 
+                hari: 'Senin',
+                jam: '08:00 - 10:30',
+                ruangan: 'Ruang Kelas Komersial 1',
+                pertemuan: [
+                    { no: 1, tanggal: '08 Jun 2026', status: 'Tersedia', tipe: 'Tatap Muka', pesanDosen: 'Kelas perdana, pengenalan silabus regulasi keselamatan penerbangan sipil.', sudahAbsen: false, bisaAbsen: true, daftarHadir: [] },
+                    { no: 2, tanggal: '15 Jun 2026', status: 'Tersedia', tipe: 'Tatap Muka', pesanDosen: 'Kuliah normal di ruang komersial. Harap pelajari bab pola alur pergerakan penumpang airside.', sudahAbsen: false, bisaAbsen: true, daftarHadir: [] },
+                    { no: 3, tanggal: '22 Jun 2026', status: 'Mendatang', tipe: 'Belum Ditentukan', pesanDosen: 'Belum ada pemberitahuan kuliah.', sudahAbsen: false, bisaAbsen: false, daftarHadir: [] }
+                ]
+            },
+            { 
+                id: 'MK02', 
+                nama: 'Hukum & Regulasi Penerbangan Internasional', 
+                dosen: 'Prof. Dr. Ir. Juanda, S.H., M.H.', 
+                hari: 'Selasa',
+                jam: '10:45 - 13:15',
+                ruangan: 'Auditorium Utama Gg. Matra',
+                pertemuan: [
+                    { no: 1, tanggal: '09 Jun 2026', status: 'Tersedia', tipe: 'Tatap Muka', pesanDosen: 'Pembahasan konvensi Chicago 1944 dan kebebasan hak udara (Freedoms of the Air).', sudahAbsen: false, bisaAbsen: true, daftarHadir: [] },
+                    { no: 2, tanggal: '16 Jun 2026', status: 'Tersedia', tipe: 'Online (Zoom)', pesanDosen: 'Perkuliahan jarak jauh via telekonferensi Zoom. Link akan dibagikan 15 menit sebelum kelas.', sudahAbsen: false, bisaAbsen: true, daftarHadir: [] },
+                    { no: 3, tanggal: '23 Jun 2026', status: 'Mendatang', tipe: 'Belum Ditentukan', pesanDosen: 'Belum ada pemberitahuan kuliah.', sudahAbsen: false, bisaAbsen: false, daftarHadir: [] }
+                ]
+            },
+            { 
+                id: 'MK03', 
+                nama: 'Keselamatan & Keamanan Penerbangan (Aviation Safety)', 
+                dosen: 'Ir. Bambang Triyono, M.T.', 
+                hari: 'Rabu',
+                jam: '08:00 - 10:30',
+                ruangan: 'Lab Simulator Avsec',
+                pertemuan: [
+                    { no: 1, tanggal: '10 Jun 2026', status: 'Tersedia', tipe: 'Tatap Muka', pesanDosen: 'Pengenalan SMS (Safety Management System) di lingkungan PT Angkasa Pura.', sudahAbsen: false, bisaAbsen: true, daftarHadir: [] },
+                    { no: 2, tanggal: '17 Jun 2026', status: 'Tersedia', tipe: 'Tatap Muka', pesanDosen: 'Praktik pemeriksaan x-ray bagasi cargo bandara.', sudahAbsen: false, bisaAbsen: true, daftarHadir: [] },
+                    { no: 3, tanggal: '24 Jun 2026', status: 'Mendatang', tipe: 'Belum Ditentukan', pesanDosen: 'Belum ada pemberitahuan kuliah.', sudahAbsen: false, bisaAbsen: false, daftarHadir: [] }
+                ]
+            },
+            { 
+                id: 'MK04', 
+                nama: 'Logistik Air Cargo & Supply Chain', 
+                dosen: 'Drs. Sutedjo, M.B.A.', 
+                hari: 'Kamis',
+                jam: '13:30 - 16:00',
+                ruangan: 'Gedung Keuangan Matra R.2',
+                pertemuan: [
+                    { no: 1, tanggal: '28 Mei 2026', status: 'Tersedia', tipe: 'Tatap Muka', pesanDosen: 'Regulasi rantai pasok udara domestik.', sudahAbsen: false, bisaAbsen: true, daftarHadir: [] },
+                    { no: 2, tanggal: '04 Jun 2026', status: 'Tersedia', tipe: 'Tatap Muka', pesanDosen: 'Dokumen pengapalan udara (Air Waybill).', sudahAbsen: false, bisaAbsen: true, daftarHadir: [] },
+                    { no: 3, tanggal: '11 Jun 2026', status: 'Mendatang', tipe: 'Belum Ditentukan', pesanDosen: 'Belum ada pemberitahuan kuliah.', sudahAbsen: false, bisaAbsen: false, daftarHadir: [] }
+                ]
+            }
+        ];
+
+        let db, auth;
+        let unsubscribeGlobalState = null;
+
+        // --- STREAMING_CHUNK:Initializing database listeners... ---
+        async function startDatabase() {
+            if (isUsingFirebase) {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'main');
+                    
+                    unsubscribeGlobalState = onSnapshot(docRef, async (snap) => {
+                        if (snap.exists()) {
+                            const cloudData = snap.data();
+                            state.mataKuliahList = cloudData.mataKuliahList || [];
+                            state.reportedDosen = cloudData.reportedDosen || {};
+                            state.complaints = cloudData.complaints || [];
+                            renderApp();
+                        } else {
+                            await setDoc(docRef, {
+                                mataKuliahList: defaultMataKuliahList,
+                                reportedDosen: {},
+                                complaints: []
+                            });
+                        }
+                    }, (err) => {
+                        console.error("Gagal mendengarkan perubahan data di cloud:", err);
+                        showToast("Koneksi cloud terganggu, beralih ke mode offline.", "error");
+                        fallbackToOffline();
+                    });
+
+                } catch (error) {
+                    console.error("Koneksi Firebase gagal:", error);
+                    fallbackToOffline();
+                }
+            } else {
+                fallbackToOffline();
+            }
+        }
+
+        function fallbackToOffline() {
+            const localData = localStorage.getItem('presentqu_local_data');
+            if (localData) {
+                try {
+                    const parsed = JSON.parse(localData);
+                    state.mataKuliahList = parsed.mataKuliahList || defaultMataKuliahList;
+                    state.reportedDosen = parsed.reportedDosen || {};
+                    state.complaints = parsed.complaints || [];
+                } catch (e) {
+                    state.mataKuliahList = defaultMataKuliahList;
+                    state.complaints = [];
+                }
+            } else {
+                state.mataKuliahList = defaultMataKuliahList;
+                state.complaints = [];
+                saveOfflineData();
+            }
+            renderApp();
+        }
+
+        function saveOfflineData() {
+            localStorage.setItem('presentqu_local_data', JSON.stringify({
+                mataKuliahList: state.mataKuliahList,
+                reportedDosen: state.reportedDosen,
+                complaints: state.complaints
+            }));
+        }
+
+        async function commitStateChange() {
+            if (isUsingFirebase && db) {
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'main');
+                    await updateDoc(docRef, {
+                        mataKuliahList: state.mataKuliahList,
+                        reportedDosen: state.reportedDosen,
+                        complaints: state.complaints
+                    });
+                } catch (e) {
+                    console.error("Gagal memperbarui ke cloud:", e);
+                }
+            } else {
+                saveOfflineData();
+                renderApp();
+            }
+        }
+
+        // --- STREAMING_CHUNK:Implementing business logic... ---
+        // --- SISTEM AKSI EVENT ---
+        window.absenTaruna = async function(mkId, noPertemuan) {
+            const mk = state.mataKuliahList.find(m => m.id === mkId);
+            const ptm = mk.pertemuan.find(p => p.no === noPertemuan);
+
+            ptm.sudahAbsen = true;
+            ptm.status = 'Hadir';
+            ptm.bisaAbsen = false;
+            
+            if (!ptm.daftarHadir) ptm.daftarHadir = [];
+            
+            // Masukkan data kehadiran yang terikat penuh dengan nama, nim, dan foto profil dinamis terbaru
+            ptm.daftarHadir.push({
+                nama: state.user.username,
+                nim: state.user.nim,
+                avatarUrl: state.user.avatarUrl || '',
+                waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+            });
+
+            showToast(`Presensi kehadiran Pertemuan ${noPertemuan} [${mk.nama}] tersimpan secara online!`);
+            await commitStateChange();
+        };
+
+        window.reportDosenKeProdi = async function(mkId, namaDosen) {
+            state.reportedDosen[mkId] = 'Ditinjau oleh Prodi';
+            showToast(`Laporan deviasi mengajar dosen ${namaDosen} berhasil dikirim ke Prodi.`, 'error');
+            await commitStateChange();
+        };
+
+        window.submitKeluhanTaruna = async function(event) {
+            event.preventDefault();
+            const mkId = document.getElementById('aduanMkId').value;
+            const isiKeluhan = document.getElementById('aduanIsi').value.trim();
+            const anonimCheckbox = document.getElementById('aduanAnonim').checked;
+
+            if (!isiKeluhan) {
+                showToast("Mohon tuliskan detail keluhan Anda!", "error");
+                return;
+            }
+
+            const mk = state.mataKuliahList.find(m => m.id === mkId);
+            const aduanBaru = {
+                id: 'ADUAN_' + Date.now(),
+                mkId: mkId,
+                mkNama: mk.nama,
+                dosenNama: mk.dosen,
+                pengaduNama: anonimCheckbox ? 'Anonim (Taruna)' : state.user.username,
+                pengaduNim: anonimCheckbox ? 'Rahasia' : state.user.nim,
+                isi: isiKeluhan,
+                tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + ' - ' + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
+                status: 'Menunggu Review'
+            };
+
+            if (!state.complaints) state.complaints = [];
+            state.complaints.push(aduanBaru);
+
+            showToast("Aduan berhasil dikirim secara real-time ke Program Studi!");
+            document.getElementById('aduanForm').reset();
+            await commitStateChange();
+        };
+
+        window.toggleSesiKelas = async function(mkId, noPertemuan) {
+            const mk = state.mataKuliahList.find(m => m.id === mkId);
+            const ptm = mk.pertemuan.find(p => p.no === noPertemuan);
+
+            if (ptm.status === 'Tersedia') {
+                ptm.status = 'Tanpa Keterangan';
+                ptm.bisaAbsen = false;
+                showToast(`Sesi Kelas Pertemuan ${noPertemuan} berhasil ditutup.`);
+            } else {
+                ptm.status = 'Tersedia';
+                ptm.bisaAbsen = true;
+                ptm.sudahAbsen = false;
+                showToast(`Sesi Kelas Pertemuan ${noPertemuan} dibuka. Taruna sekarang dapat absen!`, 'success');
+            }
+            await commitStateChange();
+        };
+
+        window.updatePesanDosen = async function(mkId, noPertemuan, inputElement) {
+            const mk = state.mataKuliahList.find(m => m.id === mkId);
+            const ptm = mk.pertemuan.find(p => p.no === noPertemuan);
+            ptm.pesanDosen = inputElement.value;
+            showToast(`Materi Pertemuan Ke-${noPertemuan} berhasil diperbarui.`);
+            await commitStateChange();
+        };
+
+        window.prodiSelesaikanLaporan = async function(mkId) {
+            state.reportedDosen[mkId] = 'Diselesaikan & Diberi Peringatan';
+            showToast(`Aduan deviasi ${mkId} diselesaikan. Surat Teguran Resmi telah diterbitkan ke dosen pengampu.`, 'success');
+            await commitStateChange();
+        };
+
+        window.prodiTindakLanjutiAduan = async function(aduanId) {
+            const aduan = state.complaints.find(c => c.id === aduanId);
+            if (aduan) {
+                aduan.status = 'Ditindaklanjuti';
+                showToast(`Keluhan terhadap ${aduan.dosenNama} telah ditindaklanjuti. Teguran dikirim ke Dosen terkait.`, 'success');
+                await commitStateChange();
+            }
+        };
+
+        // --- STREAMING_CHUNK:Managing student profile uploader & editors... ---
+        // --- SISTEM EDIT PROFIL MAHASISWA & UNGGAH FOTO ---
+        window.toggleProfileModal = function() {
+            const modal = document.getElementById('profileModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                document.getElementById('editProfileName').value = state.user.username;
+                document.getElementById('editProfileNim').value = state.user.nim;
+                document.getElementById('editProfileProdi').value = state.user.prodi;
+                
+                const previewImg = document.getElementById('profilePreview');
+                const placeholderTxt = document.getElementById('profilePlaceholderText');
+                if (state.user.avatarUrl) {
+                    previewImg.src = state.user.avatarUrl;
+                    previewImg.classList.remove('hidden');
+                    placeholderTxt.classList.add('hidden');
+                } else {
+                    previewImg.classList.add('hidden');
+                    placeholderTxt.classList.remove('hidden');
+                    placeholderTxt.innerText = state.user.username.charAt(0) || '?';
+                }
+            }
+        };
+
+        window.handleAvatarUpload = function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // Konversi gambar lokal menjadi Base64 URI agar tersimpan di cache lokal taruna
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Str = e.target.result;
+                    const previewImg = document.getElementById('profilePreview');
+                    const placeholderTxt = document.getElementById('profilePlaceholderText');
+                    
+                    previewImg.src = base64Str;
+                    previewImg.classList.remove('hidden');
+                    placeholderTxt.classList.add('hidden');
+                    
+                    // Update state avatar sementara
+                    state.user.avatarUrl = base64Str;
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        window.saveStudentProfile = function(event) {
+            event.preventDefault();
+            const originalNim = state.user.nim;
+            const newName = document.getElementById('editProfileName').value.trim().toUpperCase();
+            const newNim = document.getElementById('editProfileNim').value.trim();
+            const newProdi = document.getElementById('editProfileProdi').value.trim();
+
+            if (newName && newNim && newProdi) {
+                state.user.username = newName;
+                state.user.nim = newNim;
+                state.user.prodi = newProdi;
+
+                // Simpan perubahan profil secara permanen ke localstorage browser taruna terkait
+                localStorage.setItem(`student_profile_${newNim}`, JSON.stringify(state.user));
+                
+                // Jika NIT berubah, hapus cache lama agar tidak menumpuk
+                if (originalNim !== newNim) {
+                    localStorage.removeItem(`student_profile_${originalNim}`);
+                }
+
+                showToast("Profil Taruna berhasil diperbarui!");
+                toggleProfileModal();
+                renderApp();
+            }
+        };
+
+        // --- SISTEM AUTENTIKASI ---
+        window.handleLoginTaruna = function(event) {
+            event.preventDefault();
+            const usernameInput = document.getElementById('usernameTaruna').value.trim().toUpperCase();
+            const passwordInput = document.getElementById('passwordTaruna').value.trim();
+            
+            if (usernameInput && passwordInput) {
+                // Periksa apakah taruna ini sudah pernah login & memodifikasi profilnya di perangkat ini
+                const savedProfile = localStorage.getItem(`student_profile_${passwordInput}`);
+                if (savedProfile) {
+                    try {
+                        state.user = JSON.parse(savedProfile);
+                    } catch (e) {
+                        state.user = { username: usernameInput, nim: passwordInput, prodi: 'Manajemen Transportasi Udara', avatarUrl: '' };
+                    }
+                } else {
+                    state.user = {
+                        username: usernameInput,
+                        nim: passwordInput,
+                        prodi: 'Manajemen Transportasi Udara',
+                        avatarUrl: ''
+                    };
+                    localStorage.setItem(`student_profile_${passwordInput}`, JSON.stringify(state.user));
+                }
+
+                state.isLoggedIn = true;
+                state.role = 'mahasiswa';
+                showToast(`Selamat datang Taruna ${state.user.username}!`);
+                renderApp();
+            } else {
+                showToast('Mohon isi seluruh data login!', 'error');
+            }
+        };
+
+        window.handleLoginDosen = function(event) {
+            event.preventDefault();
+            const usernameInput = document.getElementById('usernameDosen').value.trim();
+            const nipInput = document.getElementById('nipDosen').value.trim();
+            
+            if (usernameInput && nipInput) {
+                state.isLoggedIn = true;
+                state.role = 'dosen';
+                state.dosenUser.nama = usernameInput;
+                state.dosenUser.nip = nipInput;
+                showToast(`Selamat datang Dosen ${state.dosenUser.nama}!`);
+                renderApp();
+            } else {
+                showToast('Mohon lengkapi seluruh kolom login!', 'error');
+            }
+        };
+
+        window.handleLoginProdi = function(event) {
+            event.preventDefault();
+            const usernameInput = document.getElementById('usernameProdi').value.trim();
+            const kodeInput = document.getElementById('kodeProdi').value.trim();
+            
+            if (usernameInput && kodeInput) {
+                state.isLoggedIn = true;
+                state.role = 'prodi';
+                state.prodiUser.username = usernameInput;
+                state.prodiUser.kode = kodeInput;
+                showToast(`Selamat datang Admin ${state.prodiUser.username}!`);
+                renderApp();
+            } else {
+                showToast('Mohon lengkapi seluruh kolom login!', 'error');
+            }
+        };
+
+        window.handleLogout = function() {
+            state.isLoggedIn = false;
+            showToast('Berhasil keluar.');
+            renderApp();
+        };
+
+        window.pilihMataKuliah = function(id) {
+            state.selectedMk = id;
+            renderApp();
+        };
+
+        window.setLoginTab = function(tab) {
+            state.activeLoginTab = tab;
+            renderApp();
+        };
+
+        // --- NOTIFIKASI TOAST ---
+        window.showToast = function(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `p-4 rounded-xl shadow-lg border text-sm font-medium flex items-center justify-between gap-3 pointer-events-auto transition-all duration-300 ${
+                type === 'success' ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-rose-50 border-rose-200 text-rose-900'
+            }`;
+            toast.innerHTML = `<div class="flex items-center gap-2"><span>${message}</span></div>
+                <button class="text-stone-400 hover:text-stone-600 font-bold text-lg" onclick="this.parentElement.remove()">&times;</button>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        };
+
+        // --- CONFIG MODAL ---
+        window.toggleConfigModal = function() {
+            const modal = document.getElementById('configModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                document.getElementById('firebaseConfigInput').value = localStorage.getItem('custom_firebase_config') || (firebaseConfig ? JSON.stringify(firebaseConfig, null, 2) : '');
+            }
+        };
+
+        window.saveCustomConfig = function() {
+            const input = document.getElementById('firebaseConfigInput').value.trim();
+            if (!input) {
+                localStorage.removeItem('custom_firebase_config');
+                showToast("Konfigurasi kustom dihapus. Menggunakan sistem bawaan.");
+            } else {
+                try {
+                    JSON.parse(input); 
+                    localStorage.setItem('custom_firebase_config', input);
+                    showToast("Konfigurasi Firebase disimpan!");
+                } catch (e) {
+                    showToast("JSON tidak valid.", "error");
+                    return;
+                }
+            }
+            window.location.reload();
+        };
+
+        // --- STREAMING_CHUNK:Rendering View Templates... ---
+        // --- RENDERING TAMPILAN ---
+        function getLoginHTML() {
+            const tab = state.activeLoginTab;
+            let formContent = '';
+
+            if (tab === 'taruna') {
+                formContent = `
+                    <form onsubmit="handleLoginTaruna(event)" class="space-y-4 text-left animate-fade-in">
+                        <div>
+                            <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Nama Lengkap Taruna</label>
+                            <input type="text" id="usernameTaruna" placeholder="Masukkan nama lengkap Anda..." required class="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 outline-none text-sm focus:ring-2 focus:ring-eduPrimary-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">NIT (Nomor Induk Taruna)</label>
+                            <input type="text" id="passwordTaruna" placeholder="Masukkan nomor induk Anda..." required class="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 outline-none text-sm focus:ring-2 focus:ring-eduPrimary-600">
+                        </div>
+                        <button type="submit" class="w-full bg-eduPrimary-600 hover:bg-eduPrimary-700 text-white font-semibold py-3 rounded-xl shadow-lg transition text-sm">Masuk Taruna</button>
+                    </form>
+                `;
+            } else if (tab === 'dosen') {
+                formContent = `
+                    <form onsubmit="handleLoginDosen(event)" class="space-y-4 text-left animate-fade-in">
+                        <div>
+                            <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Nama Lengkap Dosen</label>
+                            <input type="text" id="usernameDosen" placeholder="Masukkan nama lengkap beserta gelar..." required class="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 outline-none text-sm focus:ring-2 focus:ring-eduAcademic-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">NIP / Kode Dosen</label>
+                            <input type="text" id="nipDosen" placeholder="Masukkan nomor induk pegawai..." required class="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 outline-none text-sm focus:ring-2 focus:ring-eduAcademic-600">
+                        </div>
+                        <button type="submit" class="w-full bg-eduAcademic-600 hover:bg-eduAcademic-700 text-white font-semibold py-3 rounded-xl shadow-lg transition text-sm">Masuk Dosen</button>
+                    </form>
+                `;
+            } else if (tab === 'prodi') {
+                formContent = `
+                    <form onsubmit="handleLoginProdi(event)" class="space-y-4 text-left animate-fade-in">
+                        <div>
+                            <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Nama Pengelola / Admin</label>
+                            <input type="text" id="usernameProdi" placeholder="Masukkan nama unit pengelola..." required class="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 outline-none text-sm focus:ring-2 focus:ring-stone-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Kode Akses Keamanan</label>
+                            <input type="password" id="kodeProdi" placeholder="Masukkan sandi otorisasi..." required class="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 outline-none text-sm focus:ring-2 focus:ring-stone-600">
+                        </div>
+                        <button type="submit" class="w-full bg-stone-800 hover:bg-stone-900 text-white font-semibold py-3 rounded-xl shadow-lg transition text-sm">Masuk Prodi</button>
+                    </form>
+                `;
+            }
+
+            return `
+                <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-stone-200/80 p-8 md:p-10 text-center relative overflow-hidden animate-fade-in">
+                    <div class="absolute top-0 left-0 right-0 h-2 bg-eduPrimary-600"></div>
+                    <div class="bg-stone-50 border border-stone-200 p-4 rounded-2xl w-max mx-auto mb-3 text-eduPrimary-600">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    </div>
+                    <h2 class="text-3xl font-bold text-stone-800 serif-title tracking-wide">PresentQu</h2>
+                    <p class="text-xs text-stone-400 mt-1 mb-6 italic">"Sistem Presensi & Pengaduan Akademik Kolaboratif"</p>
+
+                    <div class="flex p-1 bg-stone-100 rounded-xl mb-6">
+                        <button onclick="setLoginTab('taruna')" class="w-1/3 py-2 text-xs font-bold rounded-lg transition ${tab === 'taruna' ? 'bg-white text-eduPrimary-700 shadow-sm' : 'text-stone-500 hover:text-stone-800'}">Taruna</button>
+                        <button onclick="setLoginTab('dosen')" class="w-1/3 py-2 text-xs font-bold rounded-lg transition ${tab === 'dosen' ? 'bg-white text-eduAcademic-600 shadow-sm' : 'text-stone-500 hover:text-stone-800'}">Dosen</button>
+                        <button onclick="setLoginTab('prodi')" class="w-1/3 py-2 text-xs font-bold rounded-lg transition ${tab === 'prodi' ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-500 hover:text-stone-800'}">Prodi</button>
+                    </div>
+
+                    ${formContent}
+                    <div class="mt-6 flex items-center justify-center gap-1.5 text-[10px] text-stone-400">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full ${isUsingFirebase ? 'bg-emerald-500' : 'bg-amber-500'}"></span>
+                        <span>Database: ${isUsingFirebase ? 'Firebase Cloud' : 'Offline Mode (Local)'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- STREAMING_CHUNK:Designing Student Dashboard with complaint system... ---
+        function getMahasiswaDashboardHTML() {
+            const currentMk = state.mataKuliahList.find(m => m.id === state.selectedMk) || state.mataKuliahList[0];
+            if (!currentMk) return `<div>Memuat kelas...</div>`;
+            const jumlahAlpaDosen = currentMk.pertemuan.filter(p => p.status === 'Tanpa Keterangan').length;
+            const statusLaporan = state.reportedDosen[currentMk.id];
+
+            // Render uploader avatar atau inisial nama jika foto belum diunggah
+            const avatarDisplay = state.user.avatarUrl 
+                ? `<img src="${state.user.avatarUrl}" class="w-full h-full object-cover rounded-xl" alt="Foto Taruna">`
+                : `<span class="text-xl font-bold text-eduPrimary-700">${state.user.username.charAt(0)}</span>`;
+
+            // Menyaring aduan milik pengguna ini saja (atau non-anonim)
+            const myComplaints = (state.complaints || []).filter(c => c.pengaduNim === state.user.nim);
+
+            return `
+                <div class="w-full max-w-6xl flex flex-col gap-6 animate-fade-in">
+                    <!-- HEADER IDENTITAS -->
+                    <div class="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4 border-l-4 border-l-eduAcademic-600">
+                        <div class="flex items-center gap-3.5 w-full sm:w-auto">
+                            <div class="relative group w-12 h-12 flex-shrink-0 rounded-xl bg-stone-100 border flex items-center justify-center overflow-hidden shadow-inner">
+                                ${avatarDisplay}
+                            </div>
+                            <div>
+                                <h2 class="font-bold text-stone-800 text-base flex items-center gap-2 flex-wrap">
+                                    <span>${state.user.username}</span> 
+                                    <span class="text-[10px] bg-stone-100 border text-stone-600 px-1.5 py-0.5 rounded font-mono font-bold">NIT: ${state.user.nim}</span>
+                                </h2>
+                                <p class="text-xs text-stone-400 mt-0.5">Program Studi: <span class="font-semibold text-stone-600">${state.user.prodi}</span></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
+                            <button onclick="toggleProfileModal()" class="px-3.5 py-2 text-xs font-bold text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-xl border transition">✏️ Edit Profil</button>
+                            <button onclick="handleLogout()" class="px-4 py-2 text-xs font-bold text-rose-700 bg-stone-50 hover:bg-rose-50 rounded-xl border border-stone-200 transition">Logout</button>
+                        </div>
+                    </div>
+
+                    <!-- KONTEN -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        <!-- SILABUS -->
+                        <div class="lg:col-span-4 flex flex-col gap-3">
+                            <h3 class="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Silabus Penerbangan (Senin - Kamis)</h3>
+                            ${state.mataKuliahList.map(mk => {
+                                const isSelected = mk.id === state.selectedMk;
+                                return `
+                                    <button onclick="pilihMataKuliah('${mk.id}')" class="w-full text-left p-4 rounded-2xl border transition-all ${isSelected ? 'bg-gradient-to-br from-eduPrimary-700 to-eduPrimary-800 border-eduPrimary-800 text-white shadow-md' : 'bg-white border-stone-200 text-stone-800' }">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${isSelected ? 'bg-eduPrimary-800/50 text-white' : 'bg-stone-100 text-stone-500'}">${mk.id}</span>
+                                            <span class="text-xs font-medium">${mk.ruangan}</span>
+                                        </div>
+                                        <h4 class="font-bold text-sm truncate">${mk.nama}</h4>
+                                        <p class="text-xs mt-2.5 text-stone-400 ${isSelected ? 'text-stone-200' : ''}">${mk.hari}, ${mk.jam}</p>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        <!-- PANEL DATA LOG -->
+                        <div class="lg:col-span-8 flex flex-col gap-6">
+                            <!-- WARNING BOX KETIDAKHADIRAN -->
+                            ${jumlahAlpaDosen >= 3 ? `
+                                <div class="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
+                                    <div class="flex gap-3">
+                                        <div class="p-2 bg-rose-100 text-rose-700 rounded-xl mt-0.5">⚠️</div>
+                                        <div>
+                                            <h4 class="text-sm font-bold text-rose-900">Peringatan Deviasi Mengajar Dosen!</h4>
+                                            <p class="text-xs text-rose-700 mt-0.5">Dosen pengampu <strong>${currentMk.dosen}</strong> mangkir sebanyak <strong>${jumlahAlpaDosen}x berturut-turut</strong>.</p>
+                                        </div>
+                                    </div>
+                                    <div class="w-full sm:w-auto flex-shrink-0">
+                                        ${statusLaporan 
+                                            ? `<span class="inline-block w-full text-center px-4 py-2 ${statusLaporan.includes('Diselesaikan') ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-amber-100 text-amber-900 border-amber-300'} border font-bold text-xs rounded-xl shadow-sm">⏳ ${statusLaporan}</span>`
+                                            : `<button onclick="reportDosenKeProdi('${currentMk.id}', '${currentMk.dosen}')" class="w-full px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md animate-bounce">Laporkan ke Prodi</button>`
+                                        }
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            <div class="bg-white border border-stone-200 rounded-3xl p-6 shadow-sm">
+                                <div class="border-b pb-4 mb-6 flex justify-between items-start flex-wrap gap-2">
+                                    <div>
+                                        <span class="text-xs font-bold text-eduPrimary-600 uppercase tracking-wider">Log & Indeks Presensi Kuliah (SINKRONISASI AKTIF)</span>
+                                        <h3 class="text-xl font-bold text-stone-800 serif-title mt-1">${currentMk.nama}</h3>
+                                        <p class="text-xs text-stone-400 mt-1">Dosen Pengampu: <span class="font-semibold text-stone-600">${currentMk.dosen}</span></p>
+                                    </div>
+                                    <span class="text-xs font-bold px-2.5 py-1 bg-stone-100 text-stone-700 rounded-lg">${currentMk.hari}</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    ${currentMk.pertemuan.map(ptm => {
+                                        let badge = ptm.status === 'Hadir' ? '<span class="text-amber-900 bg-amber-100 border text-[9px] font-bold px-2 py-0.5 rounded-full">✓ Hadir</span>' : (ptm.status === 'Tersedia' ? '<span class="text-eduPrimary-800 bg-eduPrimary-100 text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">● Terbuka</span>' : '<span class="text-rose-800 bg-rose-100 text-[9px] font-bold px-2 py-0.5 rounded-full">⚠️ Alpa Dosen</span>');
+                                        
+                                        return `
+                                            <div class="border rounded-2xl p-4 flex flex-col justify-between gap-4 bg-white hover:border-stone-300 transition-all">
+                                                <div>
+                                                    <div class="flex justify-between items-center mb-2.5">
+                                                        <span class="text-xs font-bold text-stone-700">Bab ${ptm.no} - ${ptm.tanggal}</span>
+                                                        ${badge}
+                                                    </div>
+                                                    <div class="bg-stone-50 border p-2 rounded-xl text-[11px] text-stone-500 italic">"${ptm.pesanDosen}"</div>
+                                                </div>
+                                                <div>
+                                                    ${ptm.status === 'Tersedia' 
+                                                        ? `<button onclick="absenTaruna('${currentMk.id}', ${ptm.no})" class="w-full py-1.5 bg-eduPrimary-600 hover:bg-eduPrimary-700 text-white font-bold rounded-xl text-xs transition">Kirim Kehadiran Taruna</button>`
+                                                        : `<div class="w-full py-1.5 bg-stone-50 text-stone-400 font-bold rounded-xl text-xs text-center border">Selesai</div>`
+                                                    }
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+
+                            <!-- FORMULIR PENGADUAN DOSEN LANGSUNG KE PRODI -->
+                            <div class="bg-white border border-stone-200 rounded-3xl p-6 shadow-sm">
+                                <h3 class="font-bold text-lg text-stone-800 serif-title border-b pb-3 mb-4 flex items-center gap-2">
+                                    <span>📢 Pusat Aspirasi & Kotak Pengaduan Taruna</span>
+                                </h3>
+                                <p class="text-xs text-stone-500 mb-4">
+                                    Memiliki kendala, kritik, atau keluhan terkait komitmen pengajaran atau metode materi dosen? Laporkan secara langsung ke Program Studi melalui formulir di bawah ini.
+                                </p>
+                                <form id="aduanForm" onsubmit="submitKeluhanTaruna(event)" class="space-y-4">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Mata Kuliah / Dosen Terlapor</label>
+                                            <select id="aduanMkId" class="w-full px-3 py-2 bg-stone-50 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-eduPrimary-600">
+                                                ${state.mataKuliahList.map(m => `<option value="${m.id}">${m.id} - ${m.nama} (${m.dosen})</option>`).join('')}
+                                            </select>
+                                        </div>
+                                        <div class="flex items-center pt-5">
+                                            <label class="flex items-center gap-2 text-xs font-semibold text-stone-600 cursor-pointer">
+                                                <input type="checkbox" id="aduanAnonim" class="rounded border-stone-300 text-eduPrimary-600 focus:ring-eduPrimary-600 w-4 h-4">
+                                                <span>Kirim Secara Anonim (Sembunyikan Identitas Saya)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Isi Detail Keluhan / Masukan Pembelajaran</label>
+                                        <textarea id="aduanIsi" rows="3" required class="w-full px-3 py-2 bg-stone-50 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-eduPrimary-600 placeholder-stone-400" placeholder="Contoh: Dosen sering mengakhiri kelas lebih cepat tanpa memberikan penjelasan materi lanjutan..."></textarea>
+                                    </div>
+                                    <div class="text-right">
+                                        <button type="submit" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shadow transition">Kirim Aduan Resmi ke Prodi</button>
+                                    </div>
+                                </form>
+
+                                <!-- HISTORI ADUAN TARUNA YANG LOGIN -->
+                                ${myComplaints.length > 0 ? `
+                                    <div class="mt-6 border-t pt-4 animate-fade-in">
+                                        <h4 class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Riwayat Aduan Anda:</h4>
+                                        <div class="space-y-2">
+                                            ${myComplaints.map(c => `
+                                                <div class="p-3 bg-stone-50 border rounded-xl text-xs flex justify-between items-start gap-4">
+                                                    <div>
+                                                        <span class="font-bold text-stone-700">${c.mkId} - ${c.mkNama}</span>
+                                                        <p class="text-stone-500 mt-1 italic">"${c.isi}"</p>
+                                                        <span class="text-[10px] text-stone-400 block mt-1">${c.tanggal}</span>
+                                                    </div>
+                                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${c.status === 'Ditindaklanjuti' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}">${c.status}</span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- STREAMING_CHUNK:Designing Lecturer Dashboard... ---
+        function getDosenDashboardHTML() {
+            const currentMk = state.mataKuliahList.find(m => m.id === state.selectedMk) || state.mataKuliahList[0];
+            if (!currentMk) return `<div>Memuat kelas...</div>`;
+            const sanksiProdi = state.reportedDosen[currentMk.id];
+
+            // Menyaring aduan dari taruna yang ditujukan untuk dosen yang sedang login
+            const myLecturerComplaints = (state.complaints || []).filter(c => 
+                c.dosenNama.toLowerCase().includes(state.dosenUser.nama.toLowerCase()) && c.status === 'Ditindaklanjuti'
+            );
+
+            return `
+                <div class="w-full max-w-6xl flex flex-col gap-6 animate-fade-in">
+                    <!-- HEADER IDENTITAS DOSEN -->
+                    <div class="bg-white rounded-2xl border border-stone-200 p-5 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4 border-l-4 border-l-eduAcademic-600">
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <div class="w-12 h-12 rounded-xl bg-eduAcademic-50 text-eduAcademic-600 flex items-center justify-center font-bold text-lg">
+                                👨‍🏫
+                            </div>
+                            <div>
+                                <h2 class="font-bold text-stone-800 text-base">Modul Pengelolaan Kelas Dosen (CLOUD)</h2>
+                                <p class="text-xs text-stone-400">Pengampu: <span class="font-semibold text-stone-700">${state.dosenUser.nama}</span> | NIP/Kode: <span class="font-mono font-semibold text-stone-600">${state.dosenUser.nip}</span></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                            <span class="text-xs font-bold serif-title text-eduAcademic-600 bg-stone-50 border px-3 py-1.5 rounded-lg">Portal Dosen</span>
+                            <button onclick="handleLogout()" class="px-4 py-2 text-xs font-bold text-rose-700 bg-stone-50 hover:bg-rose-50 rounded-xl border transition">Logout</button>
+                        </div>
+                    </div>
+
+                    <!-- WARNING BOX SANKSI PRODI KARENA MANGKIR -->
+                    ${sanksiProdi === 'Diselesaikan & Diberi Peringatan' ? `
+                        <div class="bg-rose-50 border-2 border-rose-300 text-rose-900 p-5 rounded-2xl shadow-md animate-pulse">
+                            <div class="flex gap-3">
+                                <span class="text-2xl">🚨</span>
+                                <div>
+                                    <h4 class="font-bold text-sm">SURAT TEGURAN AKADEMIK RESMI (PRODI)</h4>
+                                    <p class="text-xs text-rose-700 mt-1 leading-relaxed">Sistem mendeteksi deviasi komitmen mengajar pada kelas <strong>${currentMk.nama}</strong>. Anda diwajibkan melakukan koordinasi dengan Admin Prodi dan menyusun jadwal kelas pengganti secepatnya.</p>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- PANEL ADUAN KELUHAN TARUNA KHUSUS DOSEN INI -->
+                    ${myLecturerComplaints.length > 0 ? `
+                        <div class="bg-amber-50 border border-amber-300 rounded-3xl p-6 shadow-sm animate-fade-in">
+                            <div class="flex items-center gap-2.5 mb-3">
+                                <span class="text-xl">📋</span>
+                                <h4 class="font-bold text-sm text-amber-900">CATATAN EVALUASI & ADUAN TARUNA (DITERUSKAN OLEH PRODI)</h4>
+                            </div>
+                            <p class="text-xs text-amber-800 mb-4">
+                                Berikut merupakan ringkasan laporan taruna terkait jalannya kelas perkuliahan Anda yang telah divalidasi dan disetujui oleh Program Studi untuk segera ditindaklanjuti.
+                            </p>
+                            <div class="space-y-3">
+                                ${myLecturerComplaints.map(c => `
+                                    <div class="bg-white border border-amber-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row justify-between items-start gap-3">
+                                        <div class="space-y-1">
+                                            <span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">${c.mkId} - ${c.mkNama}</span>
+                                            <p class="text-xs text-stone-700 font-medium mt-2 leading-relaxed">"${c.isi}"</p>
+                                            <p class="text-[10px] text-stone-400 mt-1">Diajukan: ${c.pengaduNama} (${c.tanggal})</p>
+                                        </div>
+                                        <span class="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">Status: Wajib Ditindaklanjuti</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- KONTEN UTAMA DOSEN -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        <!-- SILABUS MATA KULIAH -->
+                        <div class="lg:col-span-4 flex flex-col gap-3">
+                            <h3 class="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Kurikulum Mengajar Anda (Senin - Kamis)</h3>
+                            ${state.mataKuliahList.map(mk => {
+                                const isSelected = mk.id === state.selectedMk;
+                                return `
+                                    <button onclick="pilihMataKuliah('${mk.id}')" class="w-full text-left p-4 rounded-2xl border transition-all ${isSelected ? 'bg-gradient-to-br from-eduAcademic-700 to-eduAcademic-800 border-eduAcademic-800 text-white shadow-md' : 'bg-white border-stone-200 text-stone-800' }">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${isSelected ? 'bg-eduAcademic-800/50 text-white' : 'bg-stone-100 text-stone-500'}">${mk.id}</span>
+                                            <span class="text-xs font-medium">${mk.ruangan}</span>
+                                        </div>
+                                        <h4 class="font-bold text-sm truncate">${mk.nama}</h4>
+                                        <p class="text-xs mt-2.5 text-stone-400 ${isSelected ? 'text-stone-200' : ''}">Pengampu: ${mk.dosen.split(',')[0]}</p>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        <!-- PANEL KONTROL SESI -->
+                        <div class="lg:col-span-8 space-y-4">
+                            <div class="bg-white border border-stone-200 rounded-3xl p-6 shadow-sm">
+                                <div class="border-b pb-4 mb-6">
+                                    <span class="text-xs font-bold text-eduAcademic-600 uppercase tracking-wider">Kontrol & Presensi Pengajar</span>
+                                    <h3 class="text-xl font-bold text-stone-800 serif-title mt-1">${currentMk.nama}</h3>
+                                    <p class="text-xs text-stone-400 mt-1">Dosen Pengampu Default: <span class="font-semibold text-stone-600">${currentMk.dosen}</span></p>
+                                </div>
+                                
+                                <div class="space-y-4">
+                                    ${currentMk.pertemuan.map(ptm => {
+                                        const isOpen = ptm.status === 'Tersedia';
+                                        return `
+                                            <div class="border rounded-2xl p-4 bg-stone-50/40 space-y-3">
+                                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-stone-100 pb-3">
+                                                    <div>
+                                                        <div class="flex items-center gap-2">
+                                                            <span class="text-xs font-bold text-stone-800">Pertemuan Ke-${ptm.no} (${ptm.tanggal})</span>
+                                                            ${isOpen 
+                                                                ? `<span class="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">● Terbuka (Taruna Bisa Absen)</span>` 
+                                                                : `<span class="bg-stone-200 text-stone-500 text-[9px] font-bold px-2 py-0.5 rounded-full">Tutup</span>`
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    <button onclick="toggleSesiKelas('${currentMk.id}', ${ptm.no})" class="w-full sm:w-auto px-4 py-1.5 text-xs font-bold rounded-xl transition ${
+                                                        isOpen 
+                                                            ? 'bg-rose-600 hover:bg-rose-700 text-white' 
+                                                            : 'bg-eduAcademic-600 hover:bg-eduAcademic-700 text-white'
+                                                    }">
+                                                        ${isOpen ? 'Tutup Absen' : 'Buka Absen'}
+                                                    </button>
+                                                </div>
+
+                                                <!-- INPUT PESAN -->
+                                                <div>
+                                                    <label class="block text-[10px] uppercase font-bold text-stone-400 mb-1">Materi / Pemberitahuan Sesi:</label>
+                                                    <div class="flex gap-2">
+                                                        <input type="text" value="${ptm.pesanDosen}" onchange="updatePesanDosen('${currentMk.id}', ${ptm.no}, this)" class="flex-grow text-xs bg-white border px-3 py-1.5 rounded-lg outline-none focus:border-eduAcademic-600">
+                                                        <button class="bg-stone-200 hover:bg-stone-300 px-3 py-1 rounded-lg text-xs font-semibold">Simpan</button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- DAFTAR KEHADIRAN -->
+                                                <div class="bg-white p-3 rounded-xl border border-stone-100">
+                                                    <span class="text-[10px] uppercase font-bold text-stone-400 block mb-1">Daftar Kehadiran Taruna (${ptm.daftarHadir ? ptm.daftarHadir.length : 0}):</span>
+                                                    ${(!ptm.daftarHadir || ptm.daftarHadir.length === 0) 
+                                                        ? `<span class="text-xs text-stone-400 italic block">Belum ada taruna yang melakukan presensi di sesi ini.</span>`
+                                                        : ptm.daftarHadir.map(th => {
+                                                            const hasAvatar = th.avatarUrl && th.avatarUrl.startsWith('data:');
+                                                            const avatarElement = hasAvatar 
+                                                                ? `<img src="${th.avatarUrl}" class="w-6 h-6 object-cover rounded-lg border flex-shrink-0">`
+                                                                : `<span class="w-6 h-6 rounded-lg bg-stone-100 border text-[10px] font-bold text-eduPrimary-700 flex items-center justify-center flex-shrink-0">${th.nama.charAt(0)}</span>`;
+                                                            
+                                                            return `
+                                                                <div class="flex justify-between items-center bg-amber-50/50 border border-amber-100 rounded-lg p-2 text-xs mt-1.5 gap-2 flex-wrap">
+                                                                    <div class="flex items-center gap-2">
+                                                                        ${avatarElement}
+                                                                        <span class="font-bold text-stone-700">${th.nama} (NIT: ${th.nim})</span>
+                                                                    </div>
+                                                                    <span class="text-[10px] text-amber-900 font-mono font-bold bg-white px-2 py-0.5 rounded border border-amber-200">✓ Hadir - ${th.waktu}</span>
+                                                                </div>
+                                                            `;
+                                                        }).join('')
+                                                    }
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- STREAMING_CHUNK:Designing Prodi Dashboard and review panel... ---
+        function getProdiDashboardHTML() {
+            const reportedList = state.mataKuliahList.filter(mk => state.reportedDosen[mk.id]);
+            const allComplaints = state.complaints || [];
+
+            return `
+                <div class="w-full max-w-5xl flex flex-col gap-6 animate-fade-in">
+                    <!-- HEADER IDENTITAS PRODI -->
+                    <div class="bg-white rounded-2xl border border-stone-200 p-5 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4 border-l-4 border-l-stone-800">
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <div class="w-12 h-12 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center font-bold text-lg">
+                                🏢
+                            </div>
+                            <div>
+                                <h2 class="font-bold text-stone-800 text-base">Dashboard Admin Program Studi (REAL-TIME SINKRON)</h2>
+                                <p class="text-xs text-stone-400">Pengelola: <span class="font-semibold text-stone-700">${state.prodiUser.username}</span> | Bidang: <span class="font-semibold text-stone-500">${state.prodiUser.fakultas}</span></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                            <span class="text-xs font-bold serif-title text-stone-800 bg-stone-50 border px-3 py-1.5 rounded-lg font-mono">Status Server: Online</span>
+                            <button onclick="handleLogout()" class="px-4 py-2 text-xs font-bold text-rose-700 bg-stone-50 hover:bg-rose-50 rounded-xl border transition">Logout</button>
+                        </div>
+                    </div>
+
+                    <!-- TABEL ADUAN KETIDAKHADIRAN OTOMATIS (MANGKIR) -->
+                    <div class="bg-white border border-stone-200 rounded-3xl p-6 shadow-sm">
+                        <h3 class="font-bold text-lg text-stone-800 serif-title border-b pb-3 mb-4 flex items-center gap-2">
+                            <span>Laporan Masuk (Pusat Pengaduan Mangkir Kelas)</span>
+                            <span class="text-xs font-mono bg-rose-50 border border-rose-200 text-rose-800 px-2 py-0.5 rounded-full">${reportedList.length} Kasus Terdeteksi</span>
+                        </h3>
+                        <p class="text-xs text-stone-500 mb-6">Daftar kelas yang dilaporkan mangkir berturut-turut oleh mahasiswa. Tekan **Tindak Lanjuti** untuk menerbitkan surat peringatan resmi.</p>
+
+                        ${reportedList.length === 0 ? `
+                            <div class="text-center py-6 border border-dashed rounded-2xl bg-stone-50/50">
+                                <p class="text-xs text-stone-400 font-medium">Belum ada aduan deviasi absen/mangkir dari kelas.</p>
+                            </div>
+                        ` : `
+                            <div class="space-y-3">
+                                ${reportedList.map(mk => {
+                                    const status = state.reportedDosen[mk.id];
+                                    const isResolved = status === 'Diselesaikan & Diberi Peringatan';
+                                    return `
+                                        <div class="border rounded-2xl p-4 bg-stone-50/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                                            <div class="space-y-1">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xs font-bold text-stone-800">${mk.nama} (${mk.id})</span>
+                                                    <span class="px-2 py-0.5 text-[9px] font-bold ${isResolved ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-900 border-amber-200'} rounded-full border">
+                                                        ${status}
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs text-stone-500">Dosen Terlapor: <strong class="text-stone-700">${mk.dosen}</strong></p>
+                                            </div>
+                                            <div>
+                                                ${isResolved 
+                                                    ? `<span class="text-xs text-emerald-700 font-bold flex items-center gap-1">✓ Teguran Terbit</span>`
+                                                    : `<button onclick="prodiSelesaikanLaporan('${mk.id}')" class="px-3 py-1.5 bg-stone-800 hover:bg-stone-900 text-white rounded-xl text-xs font-bold transition shadow-sm">Tindak Lanjuti</button>`
+                                                }
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- KOTAK PENGADUAN AKADEMIK MAHASISWA (PENGADUAN KUSTOM) -->
+                    <div class="bg-white border border-stone-200 rounded-3xl p-6 shadow-sm">
+                        <h3 class="font-bold text-lg text-stone-800 serif-title border-b pb-3 mb-4 flex items-center gap-2">
+                            <span>Aspirasi & Keluhan Pembelajaran Taruna</span>
+                            <span class="text-xs font-mono bg-blue-50 border border-blue-200 text-blue-800 px-2 py-0.5 rounded-full">${allComplaints.length} Laporan</span>
+                        </h3>
+                        <p class="text-xs text-stone-500 mb-6">Review masukan dan keluhan terkait proses pengajaran dosen. Klik **Tindak Lanjuti** untuk meneruskan dan memunculkan teguran ke halaman dosen yang bersangkutan.</p>
+
+                        ${allComplaints.length === 0 ? `
+                            <div class="text-center py-10 border border-dashed rounded-2xl bg-stone-50/50">
+                                <span class="text-3xl">📥</span>
+                                <p class="text-xs text-stone-400 mt-2 font-medium">Kotak pengaduan taruna masih kosong.</p>
+                            </div>
+                        ` : `
+                            <div class="space-y-4">
+                                ${allComplaints.map(c => {
+                                    const isResolved = c.status === 'Ditindaklanjuti';
+                                    return `
+                                        <div class="border rounded-2xl p-5 bg-white shadow-sm flex flex-col md:flex-row justify-between items-start gap-4 animate-fade-in">
+                                            <div class="space-y-2">
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <span class="text-xs font-bold bg-stone-100 text-stone-700 px-2 py-0.5 rounded">${c.mkId} - ${c.mkNama}</span>
+                                                    <span class="px-2 py-0.5 text-[9px] font-bold ${isResolved ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-900 border-amber-200'} rounded-full border">
+                                                        ${c.status}
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs text-stone-600 font-semibold italic">"${c.isi}"</p>
+                                                <div class="text-[10px] text-stone-400 space-y-0.5">
+                                                    <p>Pelapor: <strong>${c.pengaduNama}</strong> (NIT: ${c.pengaduNim})</p>
+                                                    <p>Dosen Terkait: <strong>${c.dosenNama}</strong></p>
+                                                    <p>Diajukan pada: ${c.tanggal}</p>
+                                                </div>
+                                            </div>
+                                            <div class="flex-shrink-0">
+                                                ${isResolved 
+                                                    ? `<span class="text-xs text-emerald-700 font-bold flex items-center gap-1">✓ Diteruskan ke Dosen</span>`
+                                                    : `<button onclick="prodiTindakLanjutiAduan('${c.id}')" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm animate-bounce">Tindak Lanjuti (Kirim Teguran)</button>`
+                                                }
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderApp() {
+            const root = document.getElementById('app');
+            if (!root) return;
+
+            if (!state.isLoggedIn) {
+                root.innerHTML = getLoginHTML();
+            } else {
+                if (state.role === 'mahasiswa') {
+                    root.innerHTML = getMahasiswaDashboardHTML();
+                } else if (state.role === 'dosen') {
+                    root.innerHTML = getDosenDashboardHTML();
+                } else if (state.role === 'prodi') {
+                    root.innerHTML = getProdiDashboardHTML();
+                }
+            }
+        }
+
+        // Jalankan Inisialisasi Database Saat Halaman Siap
+        startDatabase();
+    </script>
+</body>
+</html>
+```eof
